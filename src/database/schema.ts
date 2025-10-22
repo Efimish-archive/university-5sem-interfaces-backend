@@ -1,4 +1,3 @@
-import { drizzle } from 'drizzle-orm/node-postgres';
 import { pgTable, primaryKey, integer, text, boolean, date, serial } from "drizzle-orm/pg-core";
 
 export const user = pgTable('user', {

@@ -3,6 +3,13 @@ import { createSelectSchema, createInsertSchema } from "drizzle-zod";
 import { context } from "../context";
 import { table } from "../database/schema";
 
+const InsertOrder = createInsertSchema(table.order);
+const SelectOrder = createSelectSchema(table.order);
+const SelectOrderItem = createSelectSchema(table.orderItem);
+const SelectOrderWithItems = SelectOrder.extend({
+  items: SelectOrderItem.array(),
+});
+
 export const orders = new Elysia({ prefix: "/orders" })
   .use(context)
   .guard({
@@ -15,22 +22,22 @@ export const orders = new Elysia({ prefix: "/orders" })
     },
   })
   .get("", () => [], {
-    response: createSelectSchema(table.order).array()
+    response: SelectOrder.array()
   })
   .get("/:id", "", {
     params: "id",
-    response: createSelectSchema(table.order),
+    response: SelectOrderWithItems,
   })
   .post("", "", {
-    body: createInsertSchema(table.order),
-    response: createSelectSchema(table.order),
+    body: InsertOrder,
+    response: SelectOrder,
   })
   .put("/:id", "", {
     params: "id",
-    body: createInsertSchema(table.order),
-    response: createSelectSchema(table.order),
+    body: InsertOrder,
+    response: SelectOrder,
   })
   .delete("/:id", "", {
     params: "id",
-    response: createSelectSchema(table.order),
+    response: SelectOrder,
   });
