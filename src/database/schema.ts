@@ -1,51 +1,81 @@
-import { pgTable, primaryKey, integer, text, boolean, date, serial } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, real, boolean, integer, primaryKey } from "drizzle-orm/pg-core";
+import { relations } from 'drizzle-orm';
 
-export const user = pgTable('user', {
-  id: serial('id').primaryKey(),
-  name: text('name').unique().notNull(),
-  passwordHash: text('password_hash').notNull(),
-  isManager: boolean('is_manager').notNull().default(false),
-  createdAt: date('created_at').notNull().defaultNow(),
+export const users = pgTable("user", {
+  id: uuid().defaultRandom().primaryKey(),
+  name: text().unique().notNull(),
+  passwordHash: text().notNull(),
+  isManager: boolean().default(false).notNull(),
+  createdAt: timestamp().defaultNow().notNull(),
 });
 
-export const item = pgTable('item', {
-  id: serial('id').primaryKey(),
-  name: text('name').notNull(),
-  price: integer('price').notNull(),
-  unitsInStock: integer('units_in_stock').notNull().default(0),
-  createdAt: date('created_at').notNull().defaultNow(),
+export const usersRelations = relations(users, ({ many }) => ({
+  cartItems: many(cartItem),
+  orders: many(orders),
+}));
+
+export const items = pgTable("item", {
+  id: uuid().defaultRandom().primaryKey(),
+  name: text().notNull(),
+  price: real().notNull(),
+  unitsInStock: integer().default(0).notNull(),
+  createdAt: timestamp().defaultNow().notNull(),
 });
 
-export const order = pgTable('order', {
-  id: serial('id').primaryKey(),
-  userId: integer('user_id').references(() => user.id).notNull(),
-  status: text('status').notNull().default("pending"), // TODO: enum ["pending" | "packed" | "completed" | "canceled"]
-  totalPrice: integer('total_price').notNull(), // WARN: denormalization
-  createdAt: date('created_at').notNull().defaultNow(),
+export const itemsRelations = relations(items, ({ many }) => ({
+  cartItems: many(cartItem),
+  orders: many(orders),
+}));
+
+export const orders = pgTable("order", {
+  id: uuid().defaultRandom().primaryKey(),
+  userId: uuid().references(() => users.id).notNull(),
+  status: text({ enum: ["pending", "packed", "completed", "canceled"] }).default("pending").notNull(),
+  totalPrice: integer().notNull(), // WARN: denormalization
+  createdAt: timestamp().defaultNow().notNull(),
 });
 
-export const cartItem = pgTable('cart_item', {
-  userId: integer('user_id').references(() => user.id).notNull(),
-  itemId: integer('item_id').references(() => item.id).notNull(),
-  amount: integer('amount').notNull(),
+export const ordersRelations = relations(orders, ({ one }) => ({
+  user: one(users, {
+    fields: [orders.userId],
+    references: [users.id],
+  }),
+}));
+
+export const cartItem = pgTable("cart_item", {
+  userId: integer().references(() => users.id).notNull(),
+  itemId: integer().references(() => items.id).notNull(),
+  amount: integer().notNull(),
 }, (table) => [
   primaryKey({ columns: [table.userId, table.itemId] })
 ]);
 
-export const orderItem = pgTable('order_item', {
-  orderId: integer('order_id').references(() => order.id).notNull(),
-  itemId: integer('item_id').references(() => item.id).notNull(),
-  amount: integer('amount').notNull().default(1),
+export const cartItemRelations = relations(cartItem, ({ one }) => ({
+  user: one(users, {
+    fields: [cartItem.userId],
+    references: [users.id],
+  }),
+  item: one(items, {
+    fields: [cartItem.itemId],
+    references: [items.id],
+  }),
+}));
+
+export const orderItem = pgTable("order_item", {
+  orderId: integer().references(() => orders.id).notNull(),
+  itemId: integer().references(() => items.id).notNull(),
+  amount: integer().default(1).notNull(),
 }, (table) => [
   primaryKey({ columns: [table.orderId, table.itemId] })
 ]);
 
-export const table = {
-  user,
-  item,
-  order,
-  cartItem,
-  orderItem
-} as const;
-
-export type Table = typeof table;
+export const orderItemRelations = relations(orderItem, ({ one }) => ({
+  order: one(orders, {
+    fields: [orderItem.orderId],
+    references: [orders.id],
+  }),
+  item: one(items, {
+    fields: [orderItem.itemId],
+    references: [items.id],
+  }),
+}));

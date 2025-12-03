@@ -4,10 +4,12 @@ services:
     container_name: postgres
     restart: unless-stopped
     volumes:
-      - ./data:/var/lib/postgresql/data:rw
+      - db-data:/var/lib/postgresql/18/docker
     environment:
       POSTGRES_DB: postgres
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - 5432:5432/tcp
+volumes:
+  db-data:
